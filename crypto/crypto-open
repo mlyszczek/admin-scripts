@@ -1,0 +1,48 @@
+#!/sbin/openrc-run
+
+CRYPT_HOST=$(hostname)
+CRYPT_PATH=/boot/crypt/$CRYPT_HOST
+
+depend()
+{
+	need udev
+	before localmount
+}
+
+start() {
+	ebegin "opening encrypted device"
+
+	# crypt-boot should already been found in initrd
+	mkdir -p /boot/crypt
+	mount /dev/disk/by-label/crypt-boot /boot/crypt
+	truncate -s0 /tmp/mounted-cryptos
+
+	while read p; do
+		disk=$(echo "$p" | awk 'print $1')
+		name=$(echo "$p" | awk 'print $2')
+
+		echo "Opening $disk -> $name"
+		cryptsetup luksOpen --key-file "$CRYPT_PATH/keyfile" \
+				--header "$CRYPT_PATH/header" $disk $name
+	done < "$CRYPT_PATH/disks"
+
+	umount /boot/crypt
+	eend $?
+}
+
+stop() {
+	ebegin "closing encrypted device"
+
+	for f in /dev/mapper/*; do
+		typ=$(lsblk $f | tail -n1 | awk '{print $6}')
+		if [ x$typ != xcrypt ]; then
+			# not luks device
+			continue
+		fi
+
+		echo "closing device $(basename $d)"
+		cryptsetup luksClose $d
+	done
+
+	eend $?
+}
