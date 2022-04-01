@@ -1,0 +1,80 @@
+#!/bin/busybox sh
+
+
+# absolute paths to tools, also all unix tools
+# are called via busybox, and since we don't have
+# symlinks to busybox, we need to call busybox
+# with param to call specific tool
+bb="/bin/busybox"
+cat="$bb cat"
+killall="$bb killall"
+modprobe="$bb modprobe"
+sleep="$bb sleep"
+printf="$bb printf"
+mount="$bb /bin/mount"
+umount="$bb /bin/umount"
+
+udev="/bin/udevadm"
+mount_zfs="/sbin/mount.zfs"
+cryptsetup="/sbin/cryptsetup"
+zfs="/sbin/zfs"
+zpool="/sbin/zpool"
+switch_root="/sbin/switch_root"
+
+echo "initrd starting"
+
+# mount kernel pseudo filesystems
+# -n - don't write to /etc/mtab,
+# it will die anyway after root switch
+$mount -n -t devtmpfs devtmpfs /dev
+$mount -n -t proc     proc     /proc
+$mount -n -t sysfs    sysfs    /sys
+$mount -n -t tmpfs    tmpfs    /run
+
+
+# start udev, so it creates /dev/disk/by-* structure
+$udev --daemon --resolve-names=never
+$udev trigger
+$udev settle
+
+
+# decrypt rootfs
+echo "Please insert pendrive with decryption key, I'll give you 1 minute"
+i=1
+while :; do
+	$printf "Trying to mount crypt-boot pendrive, try: %2d/60... " $i
+	$mount /dev/disk/by-label/crypt-boot /boot/crypt >/dev/null 2>/dev/null
+	if [ $? -eq 0 ]; then break; else echo "not found... damn"; fi
+	sleep 1
+	i=$((i+1))
+	if [ $i -gt 60 ]; then
+		echo "Failed to open crypt boot device"
+		echo "I will lie down now, and die"
+		exit 0
+	fi
+done
+
+crypt_path=/boot/crypt/$($cat /etc/hostname)
+$cryptsetup luksOpen --key-file "${crypt_path}/keyfile" \
+	--header "${crypt_path}/header" /dev/disk/by-partlabel/root root
+# keys are no longer usefull now, unmount them
+$unmount /dev/disk/by-label/crypt-boot
+
+
+# mount rootfs
+$modprobe zfs
+$zpool import -N -d /dev/mapper/root root
+$mount_zfs root /mnt/root
+
+
+# unmount pseudo filesystemd - they will be
+# remounted by real os
+$umount /sys
+$umount /proc
+$umount /run
+
+# kill udev, os will start it again if he wants to
+$killall ${udev##*/}
+
+# switch to new root
+exec $switch_root /mnt/root /sbin/init
