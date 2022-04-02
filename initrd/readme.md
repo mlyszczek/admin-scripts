@@ -16,3 +16,5 @@ Creates initrd for my purpose, there are a lot of assumptions here
 - root partition must have partlabel set to "root" (set with gptdisk, gdisk)
 - zfs legacy mount is set:
   zfs set mountpoint=legacy root  # root is name of imported pool
+- cryptsetup is statically linked - otherwise you might get missing 
+  libgcc_s.so.1 error

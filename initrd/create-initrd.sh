@@ -138,7 +138,7 @@ for m in $modules; do
 	cp $moddir/$m $tmpd$moddir/$(dirname $m)
 done
 
-hostname > $tmpd/hostname
+hostname > $tmpd/etc/hostname
 
 echo "-- copying init"
 cp ./init $tmpd/init

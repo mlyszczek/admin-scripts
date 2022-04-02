@@ -46,7 +46,7 @@ crypt_dev=
 i=1
 while :; do
 	$printf ":: Looking for crypt-boot, try: %2d/60... " $i
-	crypt_dev=$($lsblk -l -o name,label | $grep crypt-open | $awk '{print $1}')
+	crypt_dev=$($lsblk -l -o name,label | $grep crypt-boot | $awk '{print $1}')
 
 	if [ "$crypt_dev" ]; then
 		echo 'found!'
@@ -65,7 +65,7 @@ while :; do
 done
 
 echo ":: mounting crypt keys: $crypt_dev"
-$mount $crypt_dev /boot/crypt
+$mount /dev/$crypt_dev /boot/crypt
 
 echo ":: decrypting root"
 root_dev=$($lsblk -l -o name,label | $grep " root" | $awk '{print $1}')
@@ -73,7 +73,7 @@ crypt_path=/boot/crypt/$($cat /etc/hostname)
 $cryptsetup luksOpen --key-file "${crypt_path}/keyfile" \
 	--header "${crypt_path}/header" $root_dev root
 # keys are no longer usefull now, unmount them
-$unmount /boot/crypt
+$umount /boot/crypt
 
 
 # mount rootfs
