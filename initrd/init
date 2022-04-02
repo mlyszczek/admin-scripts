@@ -21,7 +21,6 @@ zfs="/sbin/zfs"
 zpool="/sbin/zpool"
 switch_root="/sbin/switch_root"
 
-echo "initrd starting"
 
 # mount kernel pseudo filesystems
 # -n - don't write to /etc/mtab,
@@ -31,7 +30,10 @@ $mount -n -t proc     proc     /proc
 $mount -n -t sysfs    sysfs    /sys
 $mount -n -t tmpfs    tmpfs    /run
 
+mknod /dev/console c 5 1
+echo ":: initrd starting"
 
+echo ":: starting udev daemon"
 # start udev, so it creates /dev/disk/by-* structure
 $udev --daemon --resolve-names=never
 $udev trigger
@@ -39,21 +41,22 @@ $udev settle
 
 
 # decrypt rootfs
-echo "Please insert pendrive with decryption key, I'll give you 1 minute"
+echo ":: Please insert pendrive with decryption key, I'll give you 1 minute"
 i=1
 while :; do
-	$printf "Trying to mount crypt-boot pendrive, try: %2d/60... " $i
+	$printf ":: Trying to mount crypt-boot pendrive, try: %2d/60... " $i
 	$mount /dev/disk/by-label/crypt-boot /boot/crypt >/dev/null 2>/dev/null
 	if [ $? -eq 0 ]; then break; else echo "not found... damn"; fi
 	sleep 1
 	i=$((i+1))
 	if [ $i -gt 60 ]; then
-		echo "Failed to open crypt boot device"
-		echo "I will lie down now, and die"
+		echo ":: Failed to open crypt boot device"
+		echo ":: I will lie down now, and die"
 		exit 0
 	fi
 done
 
+echo ":: opening crypt device"
 crypt_path=/boot/crypt/$($cat /etc/hostname)
 $cryptsetup luksOpen --key-file "${crypt_path}/keyfile" \
 	--header "${crypt_path}/header" /dev/disk/by-partlabel/root root
@@ -62,8 +65,11 @@ $unmount /dev/disk/by-label/crypt-boot
 
 
 # mount rootfs
+echo ":: loading zfs modules"
 $modprobe zfs
+echo ":: importing root pool"
 $zpool import -N -d /dev/mapper/root root
+echo ":: mounting root pool to /mnt/root"
 $mount_zfs root /mnt/root
 
 
@@ -77,4 +83,5 @@ $umount /run
 $killall ${udev##*/}
 
 # switch to new root
+echo ":: switching to new root, good luck!"
 exec $switch_root /mnt/root /sbin/init
