@@ -155,6 +155,9 @@ echo "-- copying init"
 cp ./init $tmpd/init
 chmod 700 $tmpd/init
 
+echo "-- installing busybox"
+$tmpd/bin/busybox --install $tmpd/bin
+
 tree $tmpd
 
 if [ -s $initrd_file ]; then
