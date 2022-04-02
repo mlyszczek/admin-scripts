@@ -37,23 +37,12 @@ rc=0
 ## ==========================================================================
 bins="
 	/bin/busybox
-	/bin/udevadm
 	/sbin/cryptsetup
 	/sbin/mount.zfs
 	/sbin/switch_root
 	/sbin/zfs
 	/sbin/zpool
-"
-
-## ==========================================================================
-#                           ⢀⡀⡀⢀⣰⡀⡀⣀⢀⣀ ⣰⡀⢀⡀ ⢀⣀⢀⡀⣀⡀⡀⢀
-#                           ⠣⠭⠜⠣⠘⠤⠏ ⠣⠼ ⠘⠤⠣⠜ ⠣⠤⠣⠜⡧⠜⣑⡺
-#  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#   List of extra files (or directories) to copy to initrd. Directories will
-#   be created automatically
-## ==========================================================================
-extra="
-	/lib/udev/rules.d/60-persistent-storage.rules
+	/bin/lsblk
 "
 
 

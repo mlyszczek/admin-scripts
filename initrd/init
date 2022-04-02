@@ -14,13 +14,15 @@ printf="$bb printf"
 mount="$bb mount"
 umount="$bb umount"
 sh="$bb sh"
+awk="$bb awk"
+grep="$bb grep"
 
-udev="/bin/udevadm"
 mount_zfs="/sbin/mount.zfs"
 cryptsetup="/sbin/cryptsetup"
 zfs="/sbin/zfs"
 zpool="/sbin/zpool"
 switch_root="/sbin/switch_root"
+lsblk="/bin/lsblk"
 
 # on exit drop to shell, if everything goes well
 # we call exec and basically never perform EXIT
@@ -37,20 +39,22 @@ $mount -n -t tmpfs    tmpfs    /run
 mknod /dev/console c 5 1
 echo ":: initrd starting"
 
-echo ":: starting udev daemon"
-# start udev, so it creates /dev/disk/by-* structure
-$udev --daemon --resolve-names=never
-$udev trigger
-$udev settle
-
 
 # decrypt rootfs
 echo ":: Please insert pendrive with decryption key, I'll give you 1 minute"
+crypt_dev=
 i=1
 while :; do
-	$printf ":: Trying to mount crypt-boot pendrive, try: %2d/60... " $i
-	$mount /dev/disk/by-label/crypt-boot /boot/crypt >/dev/null 2>/dev/null
-	if [ $? -eq 0 ]; then break; else echo "not found... damn"; fi
+	$printf ":: Looking for crypt-boot, try: %2d/60... " $i
+	crypt_dev=$($lsblk -l -o name,label | $grep crypt-open | $awk '{print $1}')
+
+	if [ "$crypt_dev" ]; then
+		echo 'found!'
+		break
+	else
+		echo "not found... damn"
+	fi
+
 	sleep 1
 	i=$((i+1))
 	if [ $i -gt 60 ]; then
@@ -60,12 +64,16 @@ while :; do
 	fi
 done
 
-echo ":: opening crypt device"
+echo ":: mounting crypt keys: $crypt_dev"
+$mount $crypt_dev /boot/crypt
+
+echo ":: decrypting root"
+root_dev=$($lsblk -l -o name,label | $grep " root" | $awk '{print $1}')
 crypt_path=/boot/crypt/$($cat /etc/hostname)
 $cryptsetup luksOpen --key-file "${crypt_path}/keyfile" \
-	--header "${crypt_path}/header" /dev/disk/by-partlabel/root root
+	--header "${crypt_path}/header" $root_dev root
 # keys are no longer usefull now, unmount them
-$unmount /dev/disk/by-label/crypt-boot
+$unmount /boot/crypt
 
 
 # mount rootfs
@@ -82,9 +90,6 @@ $mount_zfs root /mnt/root
 $umount /sys
 $umount /proc
 $umount /run
-
-# kill udev, os will start it again if he wants to
-$killall ${udev##*/}
 
 # switch to new root
 echo ":: switching to new root, good luck!"
