@@ -78,7 +78,12 @@ $umount /boot/crypt
 
 # mount rootfs
 echo ":: loading zfs modules"
-$modprobe zfs
+# for some reason, in initrd it's not enough to simply modprobe zfs
+# and be done with it, looks like initrd is missing some kind of order
+# information (?). Anyway, load modules in order to make things to work
+for m in spl znvpair zcommon zunicode zzstd zlua icp zavl zfs; do
+	$modprobe $m
+done
 echo ":: importing root pool"
 $zpool import -N -d /dev/mapper/root root
 echo ":: mounting root pool to /mnt/root"
