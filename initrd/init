@@ -11,8 +11,9 @@ killall="$bb killall"
 modprobe="$bb modprobe"
 sleep="$bb sleep"
 printf="$bb printf"
-mount="$bb /bin/mount"
-umount="$bb /bin/umount"
+mount="$bb mount"
+umount="$bb umount"
+sh="$bb sh"
 
 udev="/bin/udevadm"
 mount_zfs="/sbin/mount.zfs"
@@ -21,6 +22,9 @@ zfs="/sbin/zfs"
 zpool="/sbin/zpool"
 switch_root="/sbin/switch_root"
 
+# on exit drop to shell, if everything goes well
+# we call exec and basically never perform EXIT
+trap "$sh" EXIT
 
 # mount kernel pseudo filesystems
 # -n - don't write to /etc/mtab,
@@ -52,7 +56,7 @@ while :; do
 	if [ $i -gt 60 ]; then
 		echo ":: Failed to open crypt boot device"
 		echo ":: I will lie down now, and die"
-		exit 0
+		exit 1
 	fi
 done
 
