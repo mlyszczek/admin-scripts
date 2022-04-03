@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ $# -lt 1 ]; then
 	echo -e "usage: $0 [--unmount] <root>"
