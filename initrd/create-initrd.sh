@@ -103,7 +103,8 @@ for b in $bins; do
 	# -a is needed so copy can preserve all special attributes
 	# this may be needed for suid bins, where without -a,
 	# suid flag won't be copied
-	cp -a $b $tmpd$b
+	# -L to resolv any symlink that would not work on initrd
+	cp -aL $b $tmpd$b
 	# lddtree will also return name of file,
 	# so skip it with tail
 	for l in $(lddtree -l $b | tail -n+2); do
