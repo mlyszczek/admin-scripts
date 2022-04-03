@@ -1,41 +1,16 @@
 #!/bin/busybox sh
 
-
-# absolute paths to tools, also all unix tools
-# are called via busybox, and since we don't have
-# symlinks to busybox, we need to call busybox
-# with param to call specific tool
-bb="/bin/busybox"
-cat="$bb cat"
-killall="$bb killall"
-modprobe="$bb modprobe"
-sleep="$bb sleep"
-printf="$bb printf"
-mount="$bb mount"
-umount="$bb umount"
-sh="$bb sh"
-awk="$bb awk"
-grep="$bb grep"
-test="$bb test"
-ls="$bb ls"
-
-mount_zfs="/sbin/mount.zfs"
-cryptsetup="/sbin/cryptsetup"
-zfs="/sbin/zfs"
-zpool="/sbin/zpool"
-switch_root="/sbin/switch_root"
-lsblk="/bin/lsblk"
-gdisk="/usr/sbin/gdisk"
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
 # drop to shell on error
 rc=1
-trap "$test $rc -eq 1 && $sh" EXIT
+trap "test $rc -eq 1 && sh" EXIT
 
 # mount kernel pseudo filesystems
-$mount -t devtmpfs devtmpfs /dev
-$mount -t proc     proc     /proc
-$mount -t sysfs    sysfs    /sys
-$mount -t tmpfs    tmpfs    /run
+mount -t devtmpfs devtmpfs /dev
+mount -t proc     proc     /proc
+mount -t sysfs    sysfs    /sys
+mount -t tmpfs    tmpfs    /run
 
 mknod /dev/console c 5 1
 echo ":: initrd starting"
@@ -46,8 +21,8 @@ echo ":: Please insert pendrive with decryption key, I'll give you 1 minute"
 crypt_dev=
 i=1
 while :; do
-	$printf ":: Looking for crypt-boot, try: %2d/60... " $i
-	crypt_dev=$($lsblk -l -o name,label | $grep crypt-boot | $awk '{print $1}')
+	printf ":: Looking for crypt-boot, try: %2d/60... " $i
+	crypt_dev=$(lsblk -l -o name,label | grep crypt-boot | awk '{print $1}')
 
 	if [ "$crypt_dev" ]; then
 		echo 'found!'
@@ -66,17 +41,17 @@ while :; do
 done
 
 echo ":: mounting crypt keys: $crypt_dev"
-$mount /dev/$crypt_dev /boot/crypt
+mount /dev/$crypt_dev /boot/crypt
 
 echo ":: looking for root device"
-for d in $($ls -1 /dev | $grep "^sd[a-z]$\|nvme0n[0-9]$"); do
+for d in $(ls -1 /dev | grep "^sd[a-z]$\|nvme0n[0-9]$"); do
 	# gdisk has stupid idea of going into interactive
 	# mode with -l when there is both mbr and gpt
-	gdisk_out=$($gdisk -l /dev/$d << EOF
+	gdisk_out=$(gdisk -l /dev/$d << EOF
 2
 EOF
 )
-rootpart=$(echo "$gdisk_out" | $grep " root$" | $awk '{print $1}')
+rootpart=$(echo "$gdisk_out" | grep " root$" | awk '{print $1}')
 if [ "$rootpart" ]; then
 	case $d in
 		sd*)   root_dev=/dev/$d$rootport ;;
@@ -92,11 +67,11 @@ fi
 
 echo ":: found root device at: $root_dev"
 echo ":: decrypting root"
-crypt_path=/boot/crypt/$($cat /etc/hostname)
-$cryptsetup luksOpen --key-file "${crypt_path}/keyfile" \
-	--header "${crypt_path}/header" $root_dev root
+crypt_path=/boot/crypt/$(cat /etc/hostname)
+cryptsetup luksOpen --key-file "$crypt_path/keyfile" \
+	--header "$crypt_path/header" $root_dev root
 # keys are no longer usefull now, unmount them
-$umount /boot/crypt
+umount /boot/crypt
 
 
 # mount rootfs
@@ -105,19 +80,19 @@ echo ":: loading zfs modules"
 # and be done with it, looks like initrd is missing some kind of order
 # information (?). Anyway, load modules in order to make things to work
 for m in spl znvpair zcommon zunicode zzstd zlua icp zavl zfs; do
-	$modprobe $m
+	modprobe $m
 done
 echo ":: importing root pool"
-$zpool import -N -d /dev/mapper/root root
+zpool import -N -d /dev/mapper/root root
 echo ":: mounting root pool to /mnt/root"
-$mount_zfs root /mnt/root
+mount_zfs root /mnt/root
 
 
 # unmount pseudo filesystemd - they will be
 # remounted by real os
-$umount /sys
-$umount /proc
-$umount /run
+umount /sys
+umount /proc
+umount /run
 
 # mark that everything is ok, and at_exit should
 # not drop into rescue shell
@@ -125,4 +100,4 @@ rc=0
 
 # switch to new root
 echo ":: switching to new root, good luck!"
-exec $switch_root /mnt/root /sbin/init
+exec switch_root /mnt/root /sbin/init
