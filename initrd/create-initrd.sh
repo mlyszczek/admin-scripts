@@ -43,6 +43,7 @@ bins="
 	/sbin/zfs
 	/sbin/zpool
 	/bin/lsblk
+	/usr/sbin/gdisk
 "
 
 

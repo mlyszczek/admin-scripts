@@ -13,8 +13,11 @@ Creates initrd for my purpose, there are a lot of assumptions here
 - full disk encryption with luks and my ../crypto based usb
 - gentoo os is used, it's possible some paths are gentoo specific,
   it's true especially for binaries derived from systemdown like udev
+- disk where root is must be gpt formatted
 - root partition must have partlabel set to "root" (set with gptdisk, gdisk)
 - zfs legacy mount is set:
   zfs set mountpoint=legacy root  # root is name of imported pool
 - cryptsetup is statically linked - otherwise you might get missing 
   libgcc_s.so.1 error
+- gptfdisk should be static as well, otherwise there might be a problem with
+  libstdc++.so.6

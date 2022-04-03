@@ -17,6 +17,7 @@ sh="$bb sh"
 awk="$bb awk"
 grep="$bb grep"
 test="$bb test"
+ls="$bb ls"
 
 mount_zfs="/sbin/mount.zfs"
 cryptsetup="/sbin/cryptsetup"
@@ -24,6 +25,7 @@ zfs="/sbin/zfs"
 zpool="/sbin/zpool"
 switch_root="/sbin/switch_root"
 lsblk="/bin/lsblk"
+gdisk="/usr/sbin/gdisk"
 
 # drop to shell on error
 rc=1
@@ -57,8 +59,8 @@ while :; do
 	sleep 1
 	i=$((i+1))
 	if [ $i -gt 60 ]; then
-		echo ":: Failed to open crypt boot device"
-		echo ":: I will lie down now, and die"
+		echo "!! Failed to open crypt boot device"
+		echo "!! I will lie down now, and die"
 		exit 1
 	fi
 done
@@ -66,8 +68,30 @@ done
 echo ":: mounting crypt keys: $crypt_dev"
 $mount /dev/$crypt_dev /boot/crypt
 
+echo ":: looking for root device"
+for d in $($ls -1 /dev | $grep "^sd[a-z]$\|nvme0n[0-9]$"); do
+	# gdisk has stupid idea of going into interactive
+	# mode with -l when there is both mbr and gpt
+	gdisk_out=$($gdisk -l /dev/$d << EOF
+2
+EOF
+)
+rootpart=$(echo "$gdisk_out" | $grep " root$" | $awk '{print $1}')
+if [ "$rootpart" ]; then
+	case $d in
+		sd*)   root_dev=/dev/$d$rootport ;;
+		nvme*) root_dev=/dev/${d}p$rootpart ;;
+	esac
+	break
+fi
+done
+if [ -z "$root_dev" ]; then
+	echo "!! root device not found, dropping to shell"
+	exit 1
+fi
+
+echo ":: found root device at: $root_dev"
 echo ":: decrypting root"
-root_dev=$($lsblk -l -o name,label | $grep " root" | $awk '{print $1}')
 crypt_path=/boot/crypt/$($cat /etc/hostname)
 $cryptsetup luksOpen --key-file "${crypt_path}/keyfile" \
 	--header "${crypt_path}/header" $root_dev root
