@@ -3,6 +3,7 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
 # drop to shell on error
+set -e
 rc=1
 trap "test $rc -eq 1 && sh" EXIT
 
