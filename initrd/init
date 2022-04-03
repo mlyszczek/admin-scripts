@@ -16,6 +16,7 @@ umount="$bb umount"
 sh="$bb sh"
 awk="$bb awk"
 grep="$bb grep"
+test="$bb test"
 
 mount_zfs="/sbin/mount.zfs"
 cryptsetup="/sbin/cryptsetup"
@@ -24,9 +25,9 @@ zpool="/sbin/zpool"
 switch_root="/sbin/switch_root"
 lsblk="/bin/lsblk"
 
-# on exit drop to shell, if everything goes well
-# we call exec and basically never perform EXIT
-trap "$sh" EXIT
+# drop to shell on error
+rc=1
+trap "$test $rc -eq 1 && $sh" EXIT
 
 # mount kernel pseudo filesystems
 # -n - don't write to /etc/mtab,
@@ -95,6 +96,10 @@ $mount_zfs root /mnt/root
 $umount /sys
 $umount /proc
 $umount /run
+
+# mark that everything is ok, and at_exit should
+# not drop into rescue shell
+rc=0
 
 # switch to new root
 echo ":: switching to new root, good luck!"
