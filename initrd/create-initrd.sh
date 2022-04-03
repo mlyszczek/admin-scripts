@@ -94,7 +94,7 @@ rc=1; set -e
 echo "creating initrd in $tmpd"
 
 # create basic dir structure
-mkdir -p $tmpd/{boot/crypt,bin,sbin,lib,lib64,mnt/root,etc,root,dev,proc,sys}
+mkdir -p $tmpd/{boot/crypt,bin,sbin,lib,lib64,mnt/root,run,etc,root,dev,proc,sys}
 mkdir -p $tmpd/usr/{bin,sbin,lib,lib64}
 
 echo "-- copying binaries"
