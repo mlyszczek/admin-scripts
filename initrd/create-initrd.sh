@@ -39,11 +39,11 @@ rc=0
 bins="
 	/bin/busybox
 	/sbin/cryptsetup
+	/sbin/e2label
 	/sbin/mount.zfs
 	/sbin/switch_root
 	/sbin/zfs
 	/sbin/zpool
-	/bin/lsblk
 	/usr/sbin/gdisk
 "
 

@@ -22,7 +22,14 @@ crypt_dev=
 i=1
 while :; do
 	printf ":: Looking for crypt-boot, try: %2d/60... " $i
-	crypt_dev=$(lsblk -l -o name,label | grep crypt-boot | awk '{print $1}')
+
+	for d in /dev/sd*; do
+		label=$(e2label $d 2>/dev/null)
+		if [ $? -ne 0 ]; then continue; fi
+		if [ $label != crypt-boot ]; then continue; fi
+		crypt_dev=$d
+		break
+	done
 
 	if [ "$crypt_dev" ]; then
 		echo 'found!'
