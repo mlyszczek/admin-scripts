@@ -160,5 +160,6 @@ fi
 
 ( cd $tmpd ; find . | cpio -o --format=newc --quiet | gzip -9 ) > $initrd_file
 
+printf ":: built for hostname: "; cat $tmpd/etc/hostname
 echo 'done:)'
 rc=0
