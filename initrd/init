@@ -48,7 +48,7 @@ while :; do
 done
 
 echo ":: mounting crypt keys: $crypt_dev"
-mount /dev/$crypt_dev /boot/crypt
+mount $crypt_dev /boot/crypt
 
 echo ":: looking for root device"
 for d in $(ls -1 /dev | grep "^sd[a-z]$\|nvme0n[0-9]$"); do
@@ -58,14 +58,14 @@ for d in $(ls -1 /dev | grep "^sd[a-z]$\|nvme0n[0-9]$"); do
 2
 EOF
 )
-rootpart=$(echo "$gdisk_out" | grep " root$" | awk '{print $1}')
-if [ "$rootpart" ]; then
-	case $d in
-		sd*)   root_dev=/dev/$d$rootport ;;
-		nvme*) root_dev=/dev/${d}p$rootpart ;;
-	esac
-	break
-fi
+	rootpart=$(echo "$gdisk_out" | grep " root$" | awk '{print $1}')
+	if [ "$rootpart" ]; then
+		case $d in
+			sd*)   root_dev=/dev/$d$rootport ;;
+			nvme*) root_dev=/dev/${d}p$rootpart ;;
+		esac
+		break
+	fi
 done
 if [ -z "$root_dev" ]; then
 	echo "!! root device not found, dropping to shell"
