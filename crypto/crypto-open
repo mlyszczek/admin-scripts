@@ -34,7 +34,7 @@ stop() {
 	ebegin "closing encrypted device"
 
 	for f in /dev/mapper/*; do
-		typ=$(lsblk $f | tail -n1 | awk '{print $6}')
+		typ=$(lsblk $f 2>/dev/null | tail -n1 | awk '{print $6}')
 		if [ x$typ != xcrypt ]; then
 			# not luks device
 			continue
