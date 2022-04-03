@@ -1,6 +1,7 @@
 #!/bin/bash
 
 tmpd=$(mktemp -d)
+script_dir=$( (cd $(dirname $0); pwd) )
 
 at_exit()
 {
@@ -146,7 +147,7 @@ else
 fi
 
 echo "-- copying init"
-cp ./init $tmpd/init
+cp $script_dir/init $tmpd/init
 chmod 700 $tmpd/init
 
 echo "-- installing busybox"
