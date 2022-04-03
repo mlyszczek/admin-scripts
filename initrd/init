@@ -100,4 +100,4 @@ rc=0
 
 # switch to new root
 echo ":: switching to new root, good luck!"
-exec switch_root /mnt/root /sbin/init
+exec /sbin/switch_root /mnt/root /sbin/init
