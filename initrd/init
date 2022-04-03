@@ -30,12 +30,10 @@ rc=1
 trap "$test $rc -eq 1 && $sh" EXIT
 
 # mount kernel pseudo filesystems
-# -n - don't write to /etc/mtab,
-# it will die anyway after root switch
-$mount -n -t devtmpfs devtmpfs /dev
-$mount -n -t proc     proc     /proc
-$mount -n -t sysfs    sysfs    /sys
-$mount -n -t tmpfs    tmpfs    /run
+$mount -t devtmpfs devtmpfs /dev
+$mount -t proc     proc     /proc
+$mount -t sysfs    sysfs    /sys
+$mount -t tmpfs    tmpfs    /run
 
 mknod /dev/console c 5 1
 echo ":: initrd starting"
