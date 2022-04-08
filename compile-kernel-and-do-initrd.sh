@@ -32,5 +32,8 @@ emerge -j @module-rebuild
 echo ":: create initrd"
 $script_dir/initrd/create-initrd.sh
 
+echo ":: generating new grub config"
+mount /boot >/dev/null 2>/dev/null # /boot might be already mounted
+grub-mkconfig -o /boot/grub/grub.cfg
 
 echo ":: all done:)"
