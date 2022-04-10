@@ -1,0 +1,10 @@
+#!/bin/sh
+
+. /usr/bofc/lib/utils.sh
+cat << HELP | help gt 9999 $@
+just like ordinary mbuffer but with -r 100M option set
+user in znapzend to limit upload rate as it can trash
+whole network with unlimited zfs send
+HELP
+
+/usr/bin/mbuffer -r 100M $@
