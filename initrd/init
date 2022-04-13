@@ -5,53 +5,142 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin
 # drop to shell on error
 rc=1
 trap "test $rc -eq 1 && sh" EXIT
+keyfile=/tmp/keyfile
+header=/tmp/header
+hostname=$(cat /etc/hostname)
+usb_max_tries=5
+
+
+## ==========================================================================
+#              / __/__  __ ____   _____ / /_ (_)____   ____   _____
+#             / /_ / / / // __ \ / ___// __// // __ \ / __ \ / ___/
+#            / __// /_/ // / / // /__ / /_ / // /_/ // / / /(__  )
+#           /_/   \__,_//_/ /_/ \___/ \__//_/ \____//_/ /_//____/
+## ==========================================================================
+
+
+## ==========================================================================
+#   Tries find keyfile/header on trusted network.
+#
+#   TODO: implement, duh...
+## ==========================================================================
+get_key_from_network()
+{
+	return 0
+}
+
+
+## ==========================================================================
+#   Finds and mounts crypt-boot pendrive, if key is found it is copied to
+#   keyfile. Header is also copied if it's found
+## ==========================================================================
+get_key_from_usb()
+{
+	if [ -s $keyfile -a -s $header ]; then
+		# keyfile exists, got key from other source,
+		return 0
+	fi
+
+	echo ":: looking for keys on usb first"
+	echo ":: Please insert pendrive with decryption key, I'll give you 1 minute"
+	crypt_dev=
+	i=1
+	while :; do
+		printf ":: Looking for crypt-boot, try: %2d/$usb_max_tries... " $i
+
+		for d in /dev/sd*; do
+			label=$(e2label $d 2>/dev/null)
+			if [ $? -ne 0 ]; then continue; fi
+			if [ $label != crypt-boot ]; then continue; fi
+			crypt_dev=$d
+			break
+		done
+
+		if [ "$crypt_dev" ]; then
+			echo 'found!'
+			break
+		else
+			echo "not found... damn"
+		fi
+
+		sleep 1
+		i=$((i+1))
+		if [ $i -gt $usb_max_tries ]; then
+			echo "!! Failed to open crypt boot device"
+			return 0
+		fi
+	done
+
+	echo ":: mounting crypt keys: $crypt_dev"
+	mount $crypt_dev /boot/crypt
+	echo ":: copying /boot/crypt/$hostname/keyfile to $keyfile"
+	cp /boot/crypt/$hostname/keyfile $keyfile
+	if [ -s /boot/crypt/$hostname/header ]; then
+		echo ":: copying /boot/crypt/$hostname/header to $header"
+		cp /boot/crypt/$hostname/header $header
+	fi
+	umount /boot/crypt
+	return 0
+}
+
+
+## ==========================================================================
+#   Reads password to decrypt root from standard input. Detached header is
+#   not supported in this mode.
+## ==========================================================================
+get_key_from_stdin()
+{
+	if [ -s $keyfile -a -s $header ]; then
+		# keyfile exists, got key from other source,
+		return 0
+	fi
+
+	echo ":: header is obviously not supported in this method"
+	echo ":: so I hope you are trying to decrypt disk with attached header:)"
+	echo ":: Please provide password for decrypting root (empty to abort): "
+	read -s pass
+	if [ -z "$pass" ]; then
+		echo ":: not reading password from stdin"
+		return 1
+	fi
+
+	printf "%s" "$pass" > $keyfile
+}
+
+
+## ==========================================================================
+#                          _____ / /_ ____ _ _____ / /_
+#                         / ___// __// __ `// ___// __/
+#                        (__  )/ /_ / /_/ // /   / /_
+#                       /____/ \__/ \__,_//_/    \__/
+## ==========================================================================
 
 # mount kernel pseudo filesystems
 mount -t devtmpfs devtmpfs /dev
 mount -t proc     proc     /proc
 mount -t sysfs    sysfs    /sys
 mount -t tmpfs    tmpfs    /run
+mount -t tmpfs    tmpfs    /tmp
 
 mknod /dev/console c 5 1
 echo ":: initrd starting"
 
 
-# decrypt rootfs
-echo ":: Please insert pendrive with decryption key, I'll give you 1 minute"
-crypt_dev=
-i=1
-while :; do
-	printf ":: Looking for crypt-boot, try: %2d/60... " $i
+# find for key in that order, each function checks if $keyfile is
+# created, if $keyfile exists it means previous step was successfull
+# and next function will immediately exit
+get_key_from_network
+get_key_from_usb
+get_key_from_stdin
 
-	for d in /dev/sd*; do
-		label=$(e2label $d 2>/dev/null)
-		if [ $? -ne 0 ]; then continue; fi
-		if [ $label != crypt-boot ]; then continue; fi
-		crypt_dev=$d
-		break
-	done
-
-	if [ "$crypt_dev" ]; then
-		echo 'found!'
-		break
-	else
-		echo "not found... damn"
-	fi
-
-	sleep 1
-	i=$((i+1))
-	if [ $i -gt 60 ]; then
-		echo "!! Failed to open crypt boot device"
-		echo "!! I will lie down now, and die"
-		exit 1
-	fi
-done
-
-echo ":: mounting crypt keys: $crypt_dev"
-mount $crypt_dev /boot/crypt
+if [ ! -s $keyfile ]; then
+	echo ":: could not get keyfile from any source, dropping to shell"
+	exit 1
+fi
 
 echo ":: looking for root device"
-for d in $(ls -1 /dev | grep "^sd[a-z]$\|nvme0n[0-9]$"); do
+for d in $(ls -1 /dev | grep "^sd[a-z]$\|nvme0n[0-9]\|mmcblk[0-9]$"); do
+	echo ":: trying $d"
 	# gdisk has stupid idea of going into interactive
 	# mode with -l when there is both mbr and gpt
 	gdisk_out=$(gdisk -l /dev/$d << EOF
@@ -61,8 +150,9 @@ EOF
 	rootpart=$(echo "$gdisk_out" | grep " root$" | awk '{print $1}')
 	if [ "$rootpart" ]; then
 		case $d in
-			sd*)   root_dev=/dev/$d$rootport ;;
-			nvme*) root_dev=/dev/${d}p$rootpart ;;
+			sd*)     root_dev=/dev/$d$rootport ;;
+			nvme*)   root_dev=/dev/${d}p$rootpart ;;
+			mmcblk*) root_dev=/dev/${d}p$rootpart ;;
 		esac
 		break
 	fi
@@ -74,11 +164,13 @@ fi
 
 echo ":: found root device at: $root_dev"
 echo ":: decrypting root"
-crypt_path=/boot/crypt/$(cat /etc/hostname)
-cryptsetup luksOpen --key-file "$crypt_path/keyfile" \
-	--header "$crypt_path/header" $root_dev root
-# keys are no longer usefull now, unmount them
-umount /boot/crypt
+if [ -s $header ]; then
+	cryptsetup luksOpen --key-file $keyfile --header $header $root_dev root
+else
+	cryptsetup luksOpen --key-file $keyfile $root_dev root
+fi
+# keys are no longer usefull now, remove them
+rm $keyfile $header
 
 
 # mount rootfs
@@ -91,6 +183,15 @@ for m in spl znvpair zcommon zunicode zzstd zlua icp zavl zfs; do
 done
 echo ":: importing root pool"
 zpool import -N -d /dev/mapper/root root
+if [ $? -ne 0 ]; then
+	echo ":: trying root-$hostname name"
+	# root pool does not exist, try root-$hostname, as it's another
+	# name that might be used. It's all because you can't import
+	# two pools with same name, and sometimes you need to take
+	# root from other os and mount it in another for debug.
+	# ah, ok, enough rant, back to program
+	zpool import -N -d /dev/mapper/root root-$hostname root
+fi
 echo ":: mounting root pool to /mnt/root"
 mount.zfs root /mnt/root
 
@@ -100,6 +201,7 @@ mount.zfs root /mnt/root
 umount /sys
 umount /proc
 umount /run
+umount /tmp
 
 # mark that everything is ok, and at_exit should
 # not drop into rescue shell
