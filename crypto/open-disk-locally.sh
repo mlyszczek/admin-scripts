@@ -6,7 +6,7 @@ if [ $# -ne 2 ]; then
 fi
 
 keyfile=$1/keyfile
-header=$2/header
+header=$1/header
 
 if [ -s $header ]; then
 	cryptsetup luksOpen --key-file $keyfile --header $header $2 local-$1
