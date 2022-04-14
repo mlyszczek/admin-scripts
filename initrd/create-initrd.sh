@@ -162,7 +162,6 @@ chmod -R g-rwx,o-rwx $tmpd/root/.ssh
 
 tree -pushag $tmpd
 
-exit 0
 if [ -s $initrd_file ]; then
 	mv $initrd_file $initrd_file.old
 fi
