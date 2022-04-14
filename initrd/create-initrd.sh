@@ -157,7 +157,8 @@ $tmpd/bin/busybox --install $tmpd/bin
 echo "-- copy fs overlay"
 cp -r $script_dir/fs/. $tmpd
 echo "-- copy rsa keys"
-cp $script_dir/id_rsa_crypto* $tmpd/root/.ssh
+cp $script_dir/id_rsa_crypto $tmpd/root/.ssh/id_rsa
+cp $script_dir/id_rsa_crypto.pub $tmpd/root/.ssh/id_rsa.pub
 chmod -R g-rwx,o-rwx $tmpd/root/.ssh
 
 tree -pushag $tmpd
