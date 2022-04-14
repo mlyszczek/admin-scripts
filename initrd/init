@@ -26,7 +26,40 @@ usb_max_tries=5
 ## ==========================================================================
 get_key_from_network()
 {
-	return 0
+	if [ -s $keyfile -a -s $header ]; then
+		# keyfile exists, got key from other source,
+		return 0
+	fi
+
+	# iterate through all networks
+	for ifn in $(ifconfig -a | cut -f1 -d\  | tr -d ':' | awk NF); do
+		if [ $ifn = lo -o $ifn = sit0 -o $ifn = wg0 -o $ifn = dummy0 ]; then
+			# interfaces we know are not connected to our lan
+			continue
+		fi
+
+		echo ":: configuring $ifn"
+		# set address known address for interface
+		ifconfig $ifn 10.1.1.251 netmask 255.255.255.0
+		if ! ping -c10.1.1.252 >/dev/null 2>/dev/null; then
+			echo "10.1.1.252 not responding on $ifn"
+			ifconfig $ifn del 10.1.1.251
+			continue
+		fi
+
+		echo ":: 10.1.1.252 responding on $ifn, getting keys"
+		/usr/bin/dbscp root@10.1.1.251:/keys/$hostname/keyfile $keyfile
+		/usr/bin/dbscp root@10.1.1.251:/keys/$hostname/header  $header
+		if [ -s $keyfile -a -s $header ]; then
+			# got key and header, we're done
+			return 0
+		fi
+
+		echo "!! error gettings keys from 10.1.1.252 on $ifn"
+		ifconfig $ifn del 10.1.1.251
+	done
+
+	echo "!! failed to get keys from any server"
 }
 
 

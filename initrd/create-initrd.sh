@@ -154,8 +154,15 @@ chmod 700 $tmpd/init
 echo "-- installing busybox"
 $tmpd/bin/busybox --install $tmpd/bin
 
-tree $tmpd
+echo "-- copy fs overlay"
+cp -r $script_dir/fs/. $tmpd
+echo "-- copy rsa keys"
+cp $script_dir/id_rsa_crypto* $tmpd/root/.ssh
+chmod -R g-rwx,o-rwx $tmpd/root/.ssh
 
+tree -pushag $tmpd
+
+exit 0
 if [ -s $initrd_file ]; then
 	mv $initrd_file $initrd_file.old
 fi

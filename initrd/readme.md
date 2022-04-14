@@ -21,3 +21,9 @@ Creates initrd for my purpose, there are a lot of assumptions here
   libgcc_s.so.1 error
 - gptfdisk should be static as well, otherwise there might be a problem with
   libstdc++.so.6
+
+
+Getting auth over network to work
+1. generate new keyfile, this keyfile will be specific to machine it's generated
+on: "ssh-keygen -f id_rsa_crypto"
+2. add public key to /root/.ssh/authorized_keys to key server
