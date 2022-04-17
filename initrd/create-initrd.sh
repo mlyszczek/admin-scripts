@@ -44,6 +44,8 @@ bins="
 	/sbin/switch_root
 	/sbin/zfs
 	/sbin/zpool
+	/usr/bin/dbscp
+	/usr/bin/dbclient
 	/usr/sbin/gdisk
 "
 
