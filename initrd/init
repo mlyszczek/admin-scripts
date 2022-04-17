@@ -40,23 +40,28 @@ get_key_from_network()
 
 		echo ":: configuring $ifn"
 		# set address known address for interface
+		ifconfig $ifn up
 		ifconfig $ifn 10.1.1.251 netmask 255.255.255.0
-		if ! ping -c10.1.1.252 >/dev/null 2>/dev/null; then
+		if ! ping -c1 10.1.1.252 >/dev/null 2>/dev/null; then
 			echo "10.1.1.252 not responding on $ifn"
-			ifconfig $ifn del 10.1.1.251
+			ifconfig $ifn 0.0.0.0
+			ifconfig $ifn down
 			continue
 		fi
 
 		echo ":: 10.1.1.252 responding on $ifn, getting keys"
-		/usr/bin/dbscp root@10.1.1.251:/keys/$hostname/keyfile $keyfile
-		/usr/bin/dbscp root@10.1.1.251:/keys/$hostname/header  $header
+		/usr/bin/dbscp root@10.1.1.252:/keys/$hostname/keyfile $keyfile
+		/usr/bin/dbscp root@10.1.1.252:/keys/$hostname/header  $header
+
+		# ip no longer needed for this loop
+		ifconfig $ifn 0.0.0.0
+		ifconfig $ifn down
 		if [ -s $keyfile -a -s $header ]; then
 			# got key and header, we're done
 			return 0
 		fi
 
 		echo "!! error gettings keys from 10.1.1.252 on $ifn"
-		ifconfig $ifn del 10.1.1.251
 	done
 
 	echo "!! failed to get keys from any server"
@@ -131,6 +136,7 @@ get_key_from_stdin()
 	echo ":: header is obviously not supported in this method"
 	echo ":: so I hope you are trying to decrypt disk with attached header:)"
 	echo ":: Please provide password for decrypting root (empty to abort): "
+	printf ">> password to unlock root fs: "
 	read -s pass
 	if [ -z "$pass" ]; then
 		echo ":: not reading password from stdin"
@@ -159,16 +165,27 @@ mknod /dev/console c 5 1
 echo ":: initrd starting"
 
 
-# find for key in that order, each function checks if $keyfile is
-# created, if $keyfile exists it means previous step was successfull
-# and next function will immediately exit
-get_key_from_network
-get_key_from_usb
-get_key_from_stdin
+for i in 1 2; do
+	# find for key in that order, each function checks if $keyfile is
+	# created, if $keyfile exists it means previous step was successfull
+	# and next function will immediately exit
+	get_key_from_network
+	get_key_from_usb
+	get_key_from_stdin
+
+	if [ -s $keyfile ]; then
+		# found our key, let's bail out
+		break
+	fi
+
+	echo ":: could not get keyfile from any source, let's try again"
+done
 
 if [ ! -s $keyfile ]; then
-	echo ":: could not get keyfile from any source, dropping to shell"
-	exit 1
+	echo "!! couldn't find key file, provide one and save it in $keyfile"
+	echo "!! alongsied with $header"
+	echo "!! when done, exit shell, we'll try to continue"
+	sh
 fi
 
 echo ":: looking for root device"
@@ -227,7 +244,6 @@ if [ $? -ne 0 ]; then
 fi
 echo ":: mounting root pool to /mnt/root"
 mount.zfs root /mnt/root
-
 
 # unmount pseudo filesystemd - they will be
 # remounted by real os
