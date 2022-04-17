@@ -25,5 +25,6 @@ Creates initrd for my purpose, there are a lot of assumptions here
 
 Getting auth over network to work
 1. generate new keyfile, this keyfile will be specific to machine it's generated
-on: "ssh-keygen -f id_rsa_crypto"
+on: "dropbearkey -f id_rsa_crypto -t rsa -s 2048" (must be dropbear or there
+might be connection errors, as it seems dropbear can't handle openssh keys)
 2. add public key to /root/.ssh/authorized_keys to key server

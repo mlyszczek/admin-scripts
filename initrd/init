@@ -42,7 +42,10 @@ get_key_from_network()
 		# set address known address for interface
 		ifconfig $ifn up
 		ifconfig $ifn 10.1.1.251 netmask 255.255.255.0
-		if ! ping -c1 10.1.1.252 >/dev/null 2>/dev/null; then
+		if ! ping -c10 10.1.1.252 >/dev/null 2>/dev/null; then
+			ifconfig -a
+			ip a
+			ip r
 			echo "10.1.1.252 not responding on $ifn"
 			ifconfig $ifn 0.0.0.0
 			ifconfig $ifn down
@@ -50,8 +53,8 @@ get_key_from_network()
 		fi
 
 		echo ":: 10.1.1.252 responding on $ifn, getting keys"
-		/usr/bin/dbscp root@10.1.1.252:/keys/$hostname/keyfile $keyfile
-		/usr/bin/dbscp root@10.1.1.252:/keys/$hostname/header  $header
+		dbscp -i/.ssh/id_rsa root@10.1.1.252:/keys/$hostname/keyfile $keyfile
+		dbscp -i/.ssh/id_rsa root@10.1.1.252:/keys/$hostname/header  $header
 
 		# ip no longer needed for this loop
 		ifconfig $ifn 0.0.0.0
