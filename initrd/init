@@ -84,7 +84,7 @@ get_key_from_usb()
 		for d in /dev/sd*; do
 			label=$(e2label $d 2>/dev/null)
 			if [ $? -ne 0 ]; then continue; fi
-			if [ $label != crypt-boot ]; then continue; fi
+			if [ x$label != xcrypt-boot ]; then continue; fi
 			crypt_dev=$d
 			break
 		done
