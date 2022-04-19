@@ -42,7 +42,15 @@ get_key_from_network()
 		# set address known address for interface
 		ifconfig $ifn up
 		ifconfig $ifn 10.1.1.251 netmask 255.255.255.0
-		if ! ping -c10 10.1.1.252 >/dev/null 2>/dev/null; then
+		ping_ok=0
+		for n in 1 2 3 4 5 6 7 8 9 0; do
+			if ping -c1 10.1.1.252 >/dev/null 2>/dev/null; then
+				ping_ok=1
+				break
+			fi
+		done
+
+		if [ $ping_ok -eq 0 ]; then
 			ifconfig -a
 			ip a
 			ip r
