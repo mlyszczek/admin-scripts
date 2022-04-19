@@ -1,32 +1,95 @@
 #!/sbin/openrc-run
 
-CRYPT_HOST=$(hostname)
-CRYPT_PATH=/boot/crypt/$CRYPT_HOST
+crypt_host=$(hostname)
+crypt_root=/boot/crypt
+crypt_path=$crypt_root/$crypt_host
 
 depend()
 {
-	need udev
+	need udev hostname
 	before localmount
+}
+
+get_key_from_network()
+{
+	einfo "configuring $ifn"
+	# set address known address for interface
+	ifconfig $ifn up
+	ip addr add 10.1.1.251/24 dev $ifn
+	ping_ok=0
+	for n in 1 2 3 4 5 6 7 8 9 0; do
+		if ping -c1 10.1.1.252 >/dev/null 2>/dev/null; then
+			ping_ok=1
+			break
+		fi
+	done
+
+	if [ $ping_ok -eq 0 ]; then
+		ewarn "10.1.1.252 not responding on $ifn"
+		# do not remove all ips and don't down the interface
+		# it may be possible that openrc already configured network
+		# and we don't want to destroy its work.
+		# Also, we are started after udev, so network interfaces
+		# are already renamed, so leaving interface up won't
+		# break that
+		ip addr del 10.1.1.251/24 dev $ifn
+		continue
+	fi
+
+	einfo "10.1.1.252 responding on $ifn, getting keys"
+	scp root@10.1.1.252:/keys/$crypt_host/keyfile $crypt_path
+	scp root@10.1.1.252:/keys/$crypt_host/header  $crypt_path
+	scp root@10.1.1.252:/keys/$crypt_host/disks   $crypt_path
+
+	# ip no longer needed for this loop
+	ip addr del 10.1.1.251/24 dev $ifn
+	if [ -s $crypt_path/keyfile -a \
+			-s $crypt_path/header -a \
+			-s $crypt_path/disks ]; then
+		# got key, header and disks, we're done
+		return 0
+	fi
+
+	ewarn "!! error gettings keys from 10.1.1.252 on $ifn"
 }
 
 start() {
 	ebegin "opening encrypted device"
 
-	# crypt-boot should already been found in initrd
-	mkdir -p /boot/crypt
-	mount /dev/disk/by-label/crypt-boot /boot/crypt
-	truncate -s0 /tmp/mounted-cryptos
+	mkdir -p $crypt_path
+	crypt_from_disk=0
+	# crypt-boot should already been found in initrd (if it is connected)
+	# so no need to wait for it
+	if [ -e /dev/disk/by-label/crypt-boot ]; then
+		# disk is inserted, use it to get decrypt keys
+		crypt_from_disk=1
+	fi
+
+	if [ $crypt_from_disk -eq 1 ]; then
+		# pendrive is connected, mount it
+		einfo "decrypting from pendrive"
+		mount /dev/disk/by-label/crypt-boot $crypt_root
+	else
+		# no pendrive, get keys and config from network
+		einfo "decrypting from network"
+		get_key_from_network
+	fi
 
 	while read p; do
-		disk=$(echo "$p" | awk 'print $1')
-		name=$(echo "$p" | awk 'print $2')
+		disk=$(echo "$p" | awk '{print $1}')
+		name=$(echo "$p" | awk '{print $2}')
 
-		echo "Opening $disk -> $name"
-		cryptsetup luksOpen --key-file "$CRYPT_PATH/keyfile" \
-				--header "$CRYPT_PATH/header" $disk $name
-	done < "$CRYPT_PATH/disks"
+		einfo "Opening $disk -> $name"
+		cryptsetup luksOpen --key-file "$crypt_path/keyfile" \
+			--header "$crypt_path/header" $disk $name
+	done < "$crypt_path/disks"
 
-	umount /boot/crypt
+	if [ $crypt_from_disk -eq 1 ]; then
+		umount $crypt_root
+	else
+		rm -f $crypt_path/*
+	fi
+
 	eend $?
 }
 
@@ -34,14 +97,20 @@ stop() {
 	ebegin "closing encrypted device"
 
 	for f in /dev/mapper/*; do
+		if [ $f = /dev/mapper/root ]; then
+			# root cannot be closed anyway, so we might as well
+			# ignore it
+			continue;
+		fi
+
 		typ=$(lsblk $f 2>/dev/null | tail -n1 | awk '{print $6}')
 		if [ x$typ != xcrypt ]; then
 			# not luks device
 			continue
 		fi
 
-		echo "closing device $(basename $d)"
-		cryptsetup luksClose $d
+		einfo "closing device $(basename $f)"
+		cryptsetup luksClose $f
 	done
 
 	eend $?
