@@ -27,4 +27,6 @@ Getting auth over network to work
 1. generate new keyfile, this keyfile will be specific to machine it's generated
 on: "dropbearkey -f id_rsa_crypto -t rsa -s 2048" (must be dropbear or there
 might be connection errors, as it seems dropbear can't handle openssh keys)
-2. add public key to /root/.ssh/authorized_keys to key server
+2. generate public key
+  dropbearkey -y -f id_rsa_crypto | grep "^ssh-rsa " > id_rsa_crypto.pub
+3. add public key to /root/.ssh/authorized_keys to key server
