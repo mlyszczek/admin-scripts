@@ -200,7 +200,7 @@ if [ ! -s $keyfile ]; then
 fi
 
 echo ":: looking for root device"
-for d in $(ls -1 /dev | grep "^sd[a-z]$\|nvme0n[0-9]\|mmcblk[0-9]$"); do
+for d in $(ls -1 /dev | grep "^sd[a-z]$\|^vd[a-z]\|nvme0n[0-9]\|mmcblk[0-9]$"); do
 	echo ":: trying $d"
 	# gdisk has stupid idea of going into interactive
 	# mode with -l when there is both mbr and gpt
@@ -212,6 +212,7 @@ EOF
 	if [ "$rootpart" ]; then
 		case $d in
 			sd*)     root_dev=/dev/$d$rootport ;;
+			vd*)     root_dev=/dev/$d$rootport ;;
 			nvme*)   root_dev=/dev/${d}p$rootpart ;;
 			mmcblk*) root_dev=/dev/${d}p$rootpart ;;
 		esac
