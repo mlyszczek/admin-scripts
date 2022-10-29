@@ -30,7 +30,11 @@ echo ":: rebuild external modules"
 emerge -j @module-rebuild
 
 echo ":: create initrd"
-$script_dir/initrd/create-initrd.sh
+if [ "$1" ]; then
+	$script_dir/initrd/create-initrd.sh $1
+else
+	$script_dir/initrd/create-initrd.sh
+fi
 
 echo ":: generating new grub config"
 mount /boot >/dev/null 2>/dev/null # /boot might be already mounted
