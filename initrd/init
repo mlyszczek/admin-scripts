@@ -211,8 +211,8 @@ EOF
 	rootpart=$(echo "$gdisk_out" | grep " root$" | awk '{print $1}')
 	if [ "$rootpart" ]; then
 		case $d in
-			sd*)     root_dev=/dev/$d$rootport ;;
-			vd*)     root_dev=/dev/$d$rootport ;;
+			sd*)     root_dev=/dev/$d$rootpart ;;
+			vd*)     root_dev=/dev/$d$rootpart ;;
 			nvme*)   root_dev=/dev/${d}p$rootpart ;;
 			mmcblk*) root_dev=/dev/${d}p$rootpart ;;
 		esac
