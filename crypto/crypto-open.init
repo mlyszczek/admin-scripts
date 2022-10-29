@@ -43,7 +43,7 @@ get_key_from_network()
 
 	# ip no longer needed for this loop
 	ip addr del 10.1.1.251/24 dev $ifn
-	if [ -s $crypt_path/keyfile -a -s $crypt_path/header]; then
+	if [ -s $crypt_path/keyfile -a -s $crypt_path/header ]; then
 		# got key and header, disks file is optional, we're done
 		return 0
 	fi
