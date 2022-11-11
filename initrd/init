@@ -256,9 +256,9 @@ boot_iscsi()
 	for x in "$@"; do case $x in
 		ISCSI_INITIATOR=*)   ISCSI_INITIATOR="${x#ISCSI_INITIATOR=}" ;;
 		ISCSI_TARGET_NAME=*) ISCSI_TARGET_NAME="${x#ISCSI_TARGET_NAME=}" ;;
-		ISCSI_TARGET_IP=*)   ISCSI_TARGET_IP="${x#ISCSI_TARGET_IP}" ;;
-		ISCSI_TARGET_PORT=*) ISCSI_TARGET_PORT="${x#ISCSI_TARGET_PORT}" ;;
-		IP=*)                IP="${x#IP}" ;;
+		ISCSI_TARGET_IP=*)   ISCSI_TARGET_IP="${x#ISCSI_TARGET_IP=}" ;;
+		ISCSI_TARGET_PORT=*) ISCSI_TARGET_PORT="${x#ISCSI_TARGET_PORT=}" ;;
+		IP=*)                IP="${x#IP=}" ;;
 	esac; done
 
 	network_up $IP
