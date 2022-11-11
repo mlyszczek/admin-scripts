@@ -20,6 +20,68 @@ usb_max_tries=5
 
 
 ## ==========================================================================
+#   Configures network. Works only in my internal LAN network. Outside of it
+#   USB must be used to initialize everything.
+## ==========================================================================
+network_up()
+{
+	ip=$1
+
+	echo ":: network up"
+	# iterate through all networks
+	for ifn in $(ifconfig -a | cut -f1 -d\  | tr -d ':' | awk NF); do
+		if [ $ifn = lo -o $ifn = sit0 -o $ifn = wg0 -o $ifn = dummy0 ]; then
+			# interfaces we know are not connected to our lan
+			continue
+		fi
+
+		echo "  :: configuring $ifn"
+		# remove all addresses from interface, in case something is set
+		ifconfig $ifn 0.0.0.0
+		# set address known address for interface
+		ifconfig $ifn up
+		ifconfig $ifn $ip netmask 255.255.255.0
+		ping_ok=0
+		for n in 1 2 3 4 5 6 7 8 9 0; do
+			# check if we can reach kurwik server
+			if ping -c1 10.1.1.1 >/dev/null 2>/dev/null; then
+				ping_ok=1
+				break
+			fi
+		done
+
+		if [ $ping_ok -eq 0 ]; then
+			ifconfig -a
+			ip a
+			ip r
+			echo "10.1.1.1 not responding on $ifn"
+			ifconfig $ifn 0.0.0.0
+			ifconfig $ifn down
+			continue
+		fi
+
+		echo ":: 10.1.1.1 responding on $ifn, lan net is up"
+		return 0
+	done
+
+	echo "!! netwould could not have been configured"
+	sh
+}
+
+
+## ==========================================================================
+#   Deconfigure all interfaces before entering real root
+## ==========================================================================
+network_down()
+{
+	for ifn in $(ifconfig -a | cut -f1 -d\  | tr -d ':' | awk NF); do
+		echo ":: decondiguring $ifn"
+		ifconfig $ifn 0.0.0.0
+		ifconfig $ifn down
+	done
+}
+
+## ==========================================================================
 #   Tries find keyfile/header on trusted network.
 #
 #   TODO: implement, duh...
@@ -195,7 +257,10 @@ boot_iscsi()
 		ISCSI_TARGET_NAME=*) ISCSI_TARGET_NAME="${x#ISCSI_TARGET_NAME=}" ;;
 		ISCSI_TARGET_IP=*)   ISCSI_TARGET_IP="${x#ISCSI_TARGET_IP}" ;;
 		ISCSI_TARGET_PORT=*) ISCSI_TARGET_PORT="${x#ISCSI_TARGET_PORT}" ;;
+		IP=*)                IP="${x#IP}" ;;
 	esac; done
+
+	network_up $ip
 
 	initiator_name="iqn.2015-05.pl.kurwinet.client:$hostname"
 	target_name="iqn.2015-05.pl.kurwinet:$hostname"
