@@ -28,43 +28,44 @@ network_up()
 	ip=$1
 
 	echo ":: network up"
-	# iterate through all networks
-	for ifn in $(ifconfig -a | cut -f1 -d\  | tr -d ':' | awk NF); do
-		if [ $ifn = lo -o $ifn = sit0 -o $ifn = wg0 -o $ifn = dummy0 ]; then
-			# interfaces we know are not connected to our lan
-			continue
-		fi
-
-		echo "  :: configuring $ifn"
-		# remove all addresses from interface, in case something is set
-		ifconfig $ifn 0.0.0.0
-		# set address known address for interface
-		ifconfig $ifn up
-		ifconfig $ifn $ip netmask 255.255.255.0
-		ping_ok=0
-		for n in 1 2 3 4 5 6 7 8 9 0; do
-			# check if we can reach kurwik server
-			if ping -c1 10.1.1.1 >/dev/null 2>/dev/null; then
-				ping_ok=1
-				break
+	# it's possible that interface might not yet be up, so try multiple
+	# times before calling it a day
+	for try in 1 2 3; do
+		# iterate through all networks
+		for ifn in $(ifconfig -a | cut -f1 -d\  | tr -d ':' | awk NF); do
+			if [ $ifn = lo -o $ifn = sit0 -o $ifn = wg0 -o $ifn = dummy0 ]; then
+				# interfaces we know are not connected to our lan
+				continue
 			fi
-		done
 
-		if [ $ping_ok -eq 0 ]; then
-			ifconfig -a
-			ip a
-			ip r
+			echo "  :: configuring $ifn"
+			# remove all addresses from interface, in case something is set
+			ifconfig $ifn 0.0.0.0
+			# set address known address for interface
+			ifconfig $ifn up
+			ifconfig $ifn $ip netmask 255.255.255.0
+
+			for n in 1 2 3; do
+				# check if we can reach kurwik server
+				if ping -c1 10.1.1.1 >/dev/null 2>/dev/null; then
+					echo "  :: 10.1.1.1 responding on $ifn, lan net is up"
+					return 0
+				fi
+			done
+
 			echo "10.1.1.1 not responding on $ifn"
 			ifconfig $ifn 0.0.0.0
 			ifconfig $ifn down
 			continue
-		fi
+		done
 
-		echo ":: 10.1.1.1 responding on $ifn, lan net is up"
-		return 0
+		sleep 1
 	done
 
 	echo "!! netwould could not have been configured"
+	ifconfig -a
+	ip a
+	ip r
 	sh
 }
 
