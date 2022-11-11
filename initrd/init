@@ -38,7 +38,7 @@ network_up()
 				continue
 			fi
 
-			echo "  :: configuring $ifn"
+			echo "  :: configuring $ifn to $ip"
 			# remove all addresses from interface, in case something is set
 			ifconfig $ifn 0.0.0.0
 			# set address known address for interface
@@ -261,7 +261,7 @@ boot_iscsi()
 		IP=*)                IP="${x#IP}" ;;
 	esac; done
 
-	network_up $ip
+	network_up $IP
 
 	initiator_name="iqn.2015-05.pl.kurwinet.client:$hostname"
 	target_name="iqn.2015-05.pl.kurwinet:$hostname"
