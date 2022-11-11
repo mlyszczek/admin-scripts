@@ -47,6 +47,8 @@ bins="
 	/usr/bin/dbscp
 	/usr/bin/dbclient
 	/usr/sbin/gdisk
+	/usr/sbin/iscsid
+	/usr/sbin/iscsiadm
 "
 
 

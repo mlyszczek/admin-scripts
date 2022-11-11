@@ -159,6 +159,64 @@ get_key_from_stdin()
 
 
 ## ==========================================================================
+#   Unmounts virtual filesystems and switches root. /mnt/root should already
+#   be mounted with real filesstem
+## ==========================================================================
+switch_to_new_root()
+{
+	# unmount pseudo filesystemd - they will be
+	# remounted by real os
+	umount /sys
+	umount /proc
+	umount /run
+	umount /tmp
+
+	# mark that everything is ok, and at_exit should
+	# not drop into rescue shell
+	rc=0
+
+	# switch to new root
+	echo ":: switching to new root, good luck!"
+	exec /sbin/switch_root /mnt/root /sbin/init
+}
+
+
+## ==========================================================================
+#   Performs boot on iscsi, skips key fetching and fs is ext4 not zfs
+## ==========================================================================
+boot_iscsi()
+{
+	set -- $(cat /proc/cmdline)
+	ISCSI_TARGET_IP=10.1.1.1
+	ISCSI_TARGET_PORT=3260
+
+	for x in "$@"; do case $x in
+		ISCSI_INITIATOR=*)   ISCSI_INITIATOR="${x#ISCSI_INITIATOR=}" ;;
+		ISCSI_TARGET_NAME=*) ISCSI_TARGET_NAME="${x#ISCSI_TARGET_NAME=}" ;;
+		ISCSI_TARGET_IP=*)   ISCSI_TARGET_IP="${x#ISCSI_TARGET_IP}" ;;
+		ISCSI_TARGET_PORT=*) ISCSI_TARGET_PORT="${x#ISCSI_TARGET_PORT}" ;;
+	esac; done
+
+	initiator_name="iqn.2015-05.pl.kurwinet.client:$hostname"
+	target_name="iqn.2015-05.pl.kurwinet:$hostname"
+	echo ":: initiator: $initiator_name, target: $target_name"
+	mkdir -p /etc/iscsi
+	echo "InitiatorName=$initiator_name" > /etc/iscsi/initiatorname.iscsi
+	echo ":: starting iscsid"
+	iscsid
+	echo ":: connecting to target"
+	iscsiadm -m node -T "$target_name" --login
+	if [ $? -ne 0 ]; then
+		echo "!! failed to connect initiator, dropping to shell"
+		echo "!! you can try to manually connect and exit to continue"
+		sh
+	fi
+
+	mount /dev/sda /mnt/root
+	switch_to_new_root
+}
+
+## ==========================================================================
 #                          _____ / /_ ____ _ _____ / /_
 #                         / ___// __// __ `// ___// __/
 #                        (__  )/ /_ / /_/ // /   / /_
@@ -175,6 +233,9 @@ mount -t tmpfs    tmpfs    /tmp
 mknod /dev/console c 5 1
 echo ":: initrd starting"
 
+if grep ISCSI_TARGET_IP /proc/cmdline; then
+	boot_iscsi
+fi
 
 for i in 1 2; do
 	# find for key in that order, each function checks if $keyfile is
@@ -257,17 +318,4 @@ fi
 echo ":: mounting root pool to /mnt/root"
 mount.zfs root /mnt/root
 
-# unmount pseudo filesystemd - they will be
-# remounted by real os
-umount /sys
-umount /proc
-umount /run
-umount /tmp
-
-# mark that everything is ok, and at_exit should
-# not drop into rescue shell
-rc=0
-
-# switch to new root
-echo ":: switching to new root, good luck!"
-exec /sbin/switch_root /mnt/root /sbin/init
+switch_to_new_root
