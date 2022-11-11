@@ -270,6 +270,8 @@ boot_iscsi()
 	echo "InitiatorName=$initiator_name" > /etc/iscsi/initiatorname.iscsi
 	echo ":: starting iscsid"
 	iscsid
+	echo ":: discovery targets"
+	iscsiadm -m discovery -t sendtargets -p 10.1.1.1
 	echo ":: connecting to target"
 	iscsiadm -m node -T "$target_name" --login
 	if [ $? -ne 0 ]; then
@@ -278,6 +280,8 @@ boot_iscsi()
 		sh
 	fi
 
+	# things need to settle before connecting
+	sleep 3
 	mount /dev/sda /mnt/root
 	switch_to_new_root
 }
@@ -295,6 +299,7 @@ mount -t proc     proc     /proc
 mount -t sysfs    sysfs    /sys
 mount -t tmpfs    tmpfs    /run
 mount -t tmpfs    tmpfs    /tmp
+mkdir /run/lock
 
 mknod /dev/console c 5 1
 echo ":: initrd starting"

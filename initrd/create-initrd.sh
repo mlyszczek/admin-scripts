@@ -98,7 +98,8 @@ rc=1; set -e
 echo "creating initrd in $tmpd"
 
 # create basic dir structure
-mkdir -p $tmpd/{boot/crypt,bin,sbin,lib,lib64,mnt/root,tmp,run,etc,dev,proc,sys}
+mkdir -p $tmpd/{boot/crypt,bin,sbin,lib,lib64,mnt/root,tmp,etc,dev,proc,sys}
+mkdir -p $tmpd/run/lock
 mkdir -p $tmpd/usr/{bin,sbin,lib,lib64}
 
 echo "-- copying binaries"
@@ -167,6 +168,7 @@ chmod -R g-rwx,o-rwx $tmpd/.ssh
 
 tree -pushag $tmpd
 
+initrd_file=./initrd.img
 if [ -s $initrd_file ]; then
 	mv $initrd_file $initrd_file.old
 fi
