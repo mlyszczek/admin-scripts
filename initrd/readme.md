@@ -4,6 +4,7 @@ Creates initrd for my purpose, there are a lot of assumptions here
 - initrd is tightly coupled with current kernel in /usr/src/linux
 - /usr/src/linux points to linux version for which initrd will be built
   format is /usr/src/linux -> linux-5.10.3-gentoo
+- enable in kernel, dm-crypt, initramfs and userspace api for crypto
 - rootfs is zfs
 - zfs modules **MUST** be emerged before running this script, zfs module
   are working only with the version they are compiled for. I've noticed that
