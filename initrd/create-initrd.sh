@@ -145,6 +145,10 @@ for m in $modules; do
 	echo "---- copy $moddir/$m"
 	cp $moddir/$m $tmpd$moddir/$(dirname $m)
 done
+# also copy all meta files.
+# recently I got error that modules.dep does not exist.
+# who knows what else will be needed in the future so copy it all to be safe
+cp $moddir/modules.* $tmpd$moddir
 
 if [ "$1" ]; then
 	echo $1 > $tmpd/etc/hostname
