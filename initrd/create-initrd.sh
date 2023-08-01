@@ -172,7 +172,6 @@ chmod -R g-rwx,o-rwx $tmpd/.ssh
 
 tree -pushag $tmpd
 
-initrd_file=./initrd.img
 if [ -s $initrd_file ]; then
 	mv $initrd_file $initrd_file.old
 fi
