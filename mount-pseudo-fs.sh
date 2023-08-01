@@ -13,7 +13,7 @@ fi
 
 oper=mount
 root=$1
-if [ $1 == --unmount ]; then
+if [ $1 == --unmount -o $1 == --umount ]; then
 	oper=unmount
 	root=$2
 fi
