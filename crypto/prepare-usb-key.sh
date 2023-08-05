@@ -55,7 +55,13 @@ if echo "${dev}" | grep -P "[0-9]$"; then
 	key_dev=${d}
 else
 	confirm ${dev} "Following device will be repartitioned and reformated"
-	dd if=/dev/zero of=${dev} count=1024 bs=1024
+	gdisk ${dev} <<EOF
+x${comment_open_advanced_options}
+z${comment_zap_the_partition_table}
+y${comment_confirm_removal_of_gpt}
+y${comment_also_confirm_blanking_mbr}
+EOF
+
 	gdisk ${dev} <<EOF
 n${comment_create_new_partition}
 ${comment_accept_default_first_drive}
