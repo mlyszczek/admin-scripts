@@ -13,3 +13,5 @@ if [ -s $header ]; then
 else
 	cryptsetup luksOpen --key-file $keyfile $2 local-$1
 fi
+
+zpool import -N -d /dev/mapper/local-$1 root-$1
