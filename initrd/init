@@ -386,6 +386,12 @@ if [ $? -ne 0 ]; then
 	# ah, ok, enough rant, back to program
 	zpool import -N -d /dev/mapper/root root-$hostname root
 fi
+if [ $? -ne 0 ]; then
+	echo "!! failed to import zfs root pool, dropping to shell"
+	echo "!! you can try to manually import and exit shell to continue"
+	sh
+fi
+
 echo ":: mounting root pool to /mnt/root"
 mount.zfs root /mnt/root
 
