@@ -61,15 +61,8 @@ bins="
 #   for current kernel version will be taken.
 ## ==========================================================================
 modules="
-	extra/avl/zavl.ko
-	extra/icp/icp.ko
-	extra/lua/zlua.ko
-	extra/nvpair/znvpair.ko
-	extra/spl/spl.ko
-	extra/unicode/zunicode.ko
-	extra/zcommon/zcommon.ko
-	extra/zfs/zfs.ko
-	extra/zstd/zzstd.ko
+	extra/spl.ko
+	extra/zfs.ko
 "
 
 ## ==================================================================
